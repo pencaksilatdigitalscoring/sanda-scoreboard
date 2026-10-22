@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <!-- Meta tag khusus Mobile App untuk menghilangkan UI browser bawaan -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>MONITOR SCOREBOARD - MOBILE SANDA</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,400;0,700;0,900;1,700&display=swap');
+        
+        /* Matikan efek pantulan scroll & hilangkan scrollbar */
+        html, body {
+            overscroll-behavior: none; 
+            touch-action: none;
+        }
+        ::-webkit-scrollbar { display: none; }
+        
+        body { 
+            font-family: 'Roboto Condensed', sans-serif; 
+            background-color: #020617; 
+            color: #f8fafc; 
+            margin: 0; 
+            padding: 0;
+            height: 100dvh; 
+            width: 100vw; 
+            overflow: hidden; 
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* PERINGATAN PORTRAIT (Tampil hanya jika HP berdiri) */
+        #portrait-warning { display: none; }
+        @media (orientation: portrait) {
+            #portrait-warning {
+                display: flex;
+            }
+            #view-score {
+                display: none !important;
+            }
+        }
+
+        /* BACKGROUNDS */
+        .wushu-bg-red { background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%); }
+        .wushu-bg-blue { background: linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%); }
+        .center-panel-bg { background: linear-gradient(180deg, #0f172a 0%, #020617 100%); }
+
+        /* TIMER BOX */
+        .timer-box {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 6vh;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 15px rgba(255,255,255,0.4);
+            line-height: 1;
+            padding: 0.5vh 3vh;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* GIANT SCORE */
+        .score-giant {
+            font-size: 38vh;
+            font-weight: 900;
+            line-height: 1;
+            text-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+        }
+
+        /* TRACKER KOTAK BAWAH */
+        .track-box {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1vh;
+            height: 100%;
+        }
+        .track-label {
+            font-size: 1.4vh;
+            font-weight: 700;
+            color: #cbd5e1;
+            text-transform: uppercase;
+            line-height: 1.1;
+        }
+        .track-val { font-size: 4vh; font-weight: 900; }
+        
+        .color-warn { color: #facc15; }
+        .color-cau { color: #f87171; } 
+        .color-out { color: #22d3ee; } 
+        .color-8c { color: #fb923c; }  
+
+        /* JURI TABLE (SKALA MOBILE SEJAJAR) */
+        .juri-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5vh;
+        }
+        .j-num {
+            color: #facc15;
+            font-size: 3.5vh;
+            font-weight: 900;
+            width: 3vh;
+            text-align: center;
+            text-shadow: 0 0 5px rgba(250, 204, 21, 0.5);
+        }
+        .j-box-container {
+            display: flex;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+        }
+        .j-box {
+            width: 6.5vh;
+            height: 5.5vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5vh;
+            font-weight: 900;
+            color: white;
+            transition: all 0.2s;
+        }
+        .j-box.red { background: #d32f2f; }
+        .j-box.blue { background: #1976d2; border-left: 2px solid rgba(0,0,0,0.5); }
+        
+        .j-ind {
+            width: 3vh;
+            height: 3vh;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(0,0,0,0.6);
+            transition: all 0.3s ease;
+        }
+        .j-ind.win-merah {
+            background: #ef4444;
+            border-color: #fca5a5;
+            box-shadow: 0 0 10px #ef4444, inset 0 0 5px #991b1b;
+        }
+        .j-ind.win-biru {
+            background: #3b82f6;
+            border-color: #93c5fd;
+            box-shadow: 0 0 10px #3b82f6, inset 0 0 5px #1e3a8a;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY PERINGATAN HP PORTRAIT -->
+    <div id="portrait-warning" class="fixed inset-0 z-50 bg-slate-900 flex-col items-center justify-center text-center p-6">
+        <i class="fas fa-mobile-alt text-emerald-400 text-[15vh] mb-6 animate-pulse" style="transform: rotate(90deg);"></i>
+        <h1 class="text-white text-[4vh] font-black uppercase mb-2">Putar HP Anda</h1>
+        <p class="text-slate-300 text-[2.5vh] font-bold">Aplikasi Scoreboard ini hanya mendukung tampilan mendatar (Landscape).</p>
+        <p class="text-yellow-400 text-[2vh] font-bold mt-4 animate-bounce"><i class="fas fa-hand-pointer mr-2"></i>Ketuk layar setelah memutar HP untuk Fullscreen</p>
+    </div>
+
+    <!-- MAIN MONITOR SCOREBOARD -->
+    <div id="view-score" class="flex flex-col h-[100dvh] w-full">
+        
+        <!-- HEADER UTAMA (Tinggi 12%) -->
+        <div class="h-[12%] bg-gradient-to-b from-slate-800 to-slate-950 border-b-2 border-slate-700 flex justify-between items-center px-[3vh] shadow-lg relative z-10 shrink-0">
+            <div class="flex-1 flex flex-col justify-center">
+                <span class="text-[1.5vh] text-emerald-400 font-bold tracking-widest uppercase drop-shadow">Wushu Sanda Mobile Scoring</span>
+                <span id="mon-match-info" class="text-[2.5vh] font-black uppercase text-white truncate drop-shadow">PARTAI - | MENUNGGU DATA</span>
+            </div>
+            
+            <div id="mon-timer" class="timer-box">00:00</div>
+            
+            <div class="flex-1 flex flex-col justify-center items-end text-right">
+                <span class="text-[1.5vh] text-slate-400 font-bold tracking-widest uppercase">Kemenangan Ronde</span>
+                <span class="text-[2.5vh] font-black uppercase text-amber-400 drop-shadow">BEST OF 3</span>
+            </div>
+        </div>
+
+        <!-- MAIN SPLIT SCREEN (Tinggi 88%) -->
+        <div class="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
+            
+            <!-- 1. SUDUT MERAH (40% Lebar) -->
+            <div class="w-[40%] wushu-bg-red flex flex-col relative border-r-[3px] border-black/80">
+                
+                <!-- Baris Identitas (Tinggi Fix 15%) -->
+                <div class="h-[15%] flex justify-between items-center px-[2vh] bg-black/25 shrink-0">
+                    <div class="flex flex-col w-full">
+                        <span id="mon-m-name" class="text-[3.5vh] font-black text-white uppercase leading-tight truncate drop-shadow-md">SUDUT MERAH</span>
+                        <span id="mon-m-kont" class="text-[1.8vh] font-bold text-red-200 uppercase tracking-wider truncate">KONTINGEN</span>
+                    </div>
+                </div>
+                
+                <!-- Giant Score Ronde (Tinggi Fleksibel ~70%) -->
+                <div class="flex-1 flex items-center justify-center relative">
+                    <div id="mon-m-score" class="score-giant z-10">0</div>
+                </div>
+
+                <!-- Penalty Trackers (Tinggi Fix 15%) -->
+                <div class="h-[15%] bg-black/40 p-[1vh] grid grid-cols-4 gap-[1vh] shrink-0 border-t border-white/10">
+                    <div class="track-box">
+                        <div class="track-label">Teguran</div>
+                        <div id="trk-m-warn" class="track-val color-warn">0</div>
+                    </div>
+                    <div class="track-box">
+                        <div class="track-label">Peringat<br>an</div>
+                        <div id="trk-m-cau" class="track-val color-cau">0</div>
+                    </div>
+                    <div class="track-box">
+                        <div class="track-label">Keluar</div>
+                        <div id="trk-m-out" class="track-val color-out">0</div>
+                    </div>
+                    <div class="track-box">
+                        <div class="track-label">8-Count</div>
+                        <div id="trk-m-8c" class="track-val color-8c">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. PANEL TENGAH JURI (20% Lebar) -->
+            <div class="w-[20%] center-panel-bg flex flex-col border-r-[3px] border-black/80 z-20">
+                
+                <!-- Spacer Atas (Menyamakan tinggi baris Identitas: 15%) -->
+                <div class="h-[15%] shrink-0"></div>
+
+                <!-- AREA JURI UTAMA (Tengah ~70%) -->
+                <div class="flex-1 p-[1vh] flex flex-col items-center justify-center min-h-0">
+                    <div class="w-full h-full flex flex-col items-center bg-[#111827] rounded-lg border border-slate-700 shadow-xl py-[1vh] px-[0.5vh]">
+                        
+                        <h3 id="center-round-text" class="text-yellow-400 font-black text-[2.5vh] mb-[1vh] uppercase tracking-widest drop-shadow-md">
+                            RONDE -
+                        </h3>
+                        
+                        <!-- Baris Juri Terbagi Rata Vertikal -->
+                        <div class="flex flex-col w-full flex-1 justify-evenly">
+                            <div class="juri-row">
+                                <div class="j-num">1</div>
+                                <div class="j-box-container"><div id="j1-m" class="j-box red">0</div><div id="j1-b" class="j-box blue">0</div></div>
+                                <div id="ind-1" class="j-ind"></div>
+                            </div>
+                            <div class="juri-row">
+                                <div class="j-num">2</div>
+                                <div class="j-box-container"><div id="j2-m" class="j-box red">0</div><div id="j2-b" class="j-box blue">0</div></div>
+                                <div id="ind-2" class="j-ind"></div>
+                            </div>
+                            <div class="juri-row">
+                                <div class="j-num">3</div>
+                                <div class="j-box-container"><div id="j3-m" class="j-box red">0</div><div id="j3-b" class="j-box blue">0</div></div>
+                                <div id="ind-3" class="j-ind"></div>
+                            </div>
+                            <div class="juri-row">
+                                <div class="j-num">4</div>
+                                <div class="j-box-container"><div id="j4-m" class="j-box red">0</div><div id="j4-b" class="j-box blue">0</div></div>
+                                <div id="ind-4" class="j-ind"></div>
+                            </div>
+                            <div class="juri-row">
+                                <div class="j-num">5</div>
+                                <div class="j-box-container"><div id="j5-m" class="j-box red">0</div><div id="j5-b" class="j-box blue">0</div></div>
+                                <div id="ind-5" class="j-ind"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Spacer Bawah (Menyamakan tinggi baris Trackers: 15%) -->
+                <div class="h-[15%] shrink-0"></div>
+            </div>
+
+            <!-- 3. SUDUT BIRU (40% Lebar) -->
+            <div class="w-[40%] wushu-bg-blue flex flex-col relative">
+                
+                <!-- Baris Identitas (Tinggi Fix 15%) -->
+                <div class="h-[15%] flex justify-between items-center px-[2vh] bg-black/25 flex-row-reverse text-right shrink-0">
+                    <div class="flex flex-col w-full text-right">
+                        <span id="mon-b-name" class="text-[3.5vh] font-black text-white uppercase leading-tight truncate drop-shadow-md">SUDUT BIRU</span>
+                        <span id="mon-b-kont" class="text-[1.8vh] font-bold text-blue-200 uppercase tracking-wider truncate">KONTINGEN</span>
+                    </div>
+                </div>
+                
+                <!-- Giant Score Ronde (Tinggi Fleksibel ~70%) -->
+                <div class="flex-1 flex items-center justify-center relative">
+                    <div id="mon-b-score" class="score-giant z-10">0</div>
+                </div>
+
+                <!-- Penalty Trackers (Tinggi Fix 15%) -->
+                <div class="h-[15%] bg-black/40 p-[1vh] grid grid-cols-4 gap-[1vh] shrink-0 border-t border-white/10">
+                    <div class="track-box">
+                        <div class="track-label">Teguran</div>
+                        <div id="trk-b-warn" class="track-val color-warn">0</div>
+                    </div>
+                    <div class="track-box">
+                        <div class="track-label">Peringat<br>an</div>
+                        <div id="trk-b-cau" class="track-val color-cau">0</div>
+                    </div>
+                    <div class="track-box">
+                        <div class="track-label">Keluar</div>
+                        <div id="trk-b-out" class="track-val color-out">0</div>
+                    </div>
+                    <div class="track-box">
+                        <div class="track-label">8-Count</div>
+                        <div id="trk-b-8c" class="track-val color-8c">0</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+<script type="module">
+    // --- FITUR AUTO FULLSCREEN SAAT LAYAR DIKETUK ---
+    function enforceFullscreen() {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            const docEl = document.documentElement;
+            if (docEl.requestFullscreen) {
+                docEl.requestFullscreen().catch(err => console.log("Fullscreen diblokir: ", err));
+            } else if (docEl.webkitRequestFullscreen) { /* Safari Mobile */
+                docEl.webkitRequestFullscreen();
+            }
+        }
+    }
+    // Browser butuh pancingan klik/sentuhan pertama kali untuk mengizinkan fullscreen
+    document.body.addEventListener('click', enforceFullscreen);
+    document.body.addEventListener('touchstart', enforceFullscreen, { passive: true });
+
+    // INTEGRASI FIREBASE WUSHU SANDA
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCUhrQj0vxKYDtf1iSJVetY6gQ5K932blM",
+        authDomain: "wushu-sanda-b85dc.firebaseapp.com",
+        databaseURL: "https://wushu-sanda-b85dc-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "wushu-sanda-b85dc",
+        storageBucket: "wushu-sanda-b85dc.firebasestorage.app",
+        messagingSenderId: "335593032214",
+        appId: "1:335593032214:web:65e2186bee003408c48337"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const dbRef = ref(database, 'wushu_sanda_scoring'); 
+
+    // Struktur Default
+    window.state = {
+        timer: 120, babak: 1, isRunning: false, bertandingIdx: -1, 
+        matches: [],
+        merah: { baseScore: [0,0,0], actions: [], roundWins: [false,false,false], juri: {} },
+        biru: { baseScore: [0,0,0], actions: [], roundWins: [false,false,false], juri: {} }
+    };
+
+    onValue(dbRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            ['merah', 'biru'].forEach(side => {
+                if (!data[side]) data[side] = {};
+                if (!data[side].roundWins) data[side].roundWins = [false,false,false];
+                if (!data[side].actions) data[side].actions = [];
+                if (!data[side].juri) data[side].juri = {};
+                if (!data[side].baseScore) data[side].baseScore = [0,0,0];
+            });
+            window.state = data;
+            renderMonitorUI();
+        }
+    });
+
+    // Kalkulasi Poin dari Dewan berdasarkan pelanggaran dari pihak lawan
+    // (Jika sudut Merah mendapat teguran, sudut Biru mendapat nilai tambah, dll.)
+    function getDewanPoints(side, st, curRoundIdx) {
+        const opp = side === 'merah' ? 'biru' : 'merah';
+        const acts = st[opp].actions || [];
+        let pts = 0;
+        
+        acts.forEach(a => {
+            if (a.round === curRoundIdx + 1) {
+                if (a.type === 'warning') pts += 1;   // Teguran = 1 Poin untuk Lawan
+                if (a.type === 'caution') pts += 2;   // Peringatan = 2 Poin untuk Lawan
+                if (a.type === '8count') pts += 2;    // Hitungan 8 = 2 Poin untuk Lawan
+                if (a.type === 'ringout') pts += 2;   // Keluar Matras = 2 Poin untuk Lawan
+            }
+        });
+        return pts;
+    }
+
+    function renderMonitorUI() {
+        const st = window.state;
+        let activeMatch = (st.bertandingIdx >= 0 && st.matches) ? st.matches[st.bertandingIdx] : null;
+
+        if (activeMatch) {
+            document.getElementById('mon-match-info').innerText = `PARTAI ${activeMatch.p} | ${activeMatch.kelas} ${activeMatch.cat} | ${activeMatch.gender}`;
+            document.getElementById('mon-m-name').innerText = activeMatch.m || "SUDUT MERAH";
+            document.getElementById('mon-m-kont').innerText = activeMatch.km || "---";
+            document.getElementById('mon-b-name').innerText = activeMatch.b || "SUDUT BIRU";
+            document.getElementById('mon-b-kont').innerText = activeMatch.kb || "---";
+        }
+
+        // Timer
+        const mStr = Math.floor(st.timer / 60).toString().padStart(2, '0');
+        const sStr = (st.timer % 60).toString().padStart(2, '0');
+        document.getElementById('mon-timer').innerText = `${mStr}:${sStr}`;
+
+        // 1. UPDATE ANGKA RAKSASA (MENGHITUNG KEMENANGAN RONDE)
+        const winMerah = st.merah.roundWins.filter(w => w === true).length;
+        const winBiru = st.biru.roundWins.filter(w => w === true).length;
+        
+        document.getElementById('mon-m-score').innerText = winMerah;
+        document.getElementById('mon-b-score').innerText = winBiru;
+
+        // 2. UPDATE PANEL JURI DI TENGAH (Poin Juri Murni + Poin Dewan)
+        const curRoundIdx = (st.babak || 1) - 1;
+        document.getElementById('center-round-text').innerText = `RONDE ${st.babak || 1}`;
+
+        // Kalkulasi Tambahan Nilai dari Dewan (Base + Pelanggaran Lawan)
+        const dewanPtsM = getDewanPoints('merah', st, curRoundIdx) + (st.merah.baseScore[curRoundIdx] || 0);
+        const dewanPtsB = getDewanPoints('biru', st, curRoundIdx) + (st.biru.baseScore[curRoundIdx] || 0);
+
+        for (let i = 1; i <= 5; i++) {
+            let jKey = 'j' + i;
+            let pointM = 0, pointB = 0;
+            
+            // Ambil Skor pukulan/tendangan/bantingan murni Juri
+            if (st.merah.juri && st.merah.juri[jKey] && st.merah.juri[jKey][curRoundIdx]) {
+                pointM = st.merah.juri[jKey][curRoundIdx];
+            }
+            if (st.biru.juri && st.biru.juri[jKey] && st.biru.juri[jKey][curRoundIdx]) {
+                pointB = st.biru.juri[jKey][curRoundIdx];
+            }
+
+            // Hitung Total Poin yang dilihat audiens (Skor Juri + Skor Dewan)
+            let totalM = pointM + dewanPtsM;
+            let totalB = pointB + dewanPtsB;
+
+            document.getElementById(`j${i}-m`).innerText = totalM;
+            document.getElementById(`j${i}-b`).innerText = totalB;
+
+            // Indikator Warna Dot (Merah/Biru/Hitam)
+            let indikator = document.getElementById(`ind-${i}`);
+            indikator.className = "j-ind"; 
+
+            if (totalM > totalB) {
+                indikator.classList.add('win-merah');
+            } else if (totalB > totalM) {
+                indikator.classList.add('win-biru');
+            }
+        }
+
+        // 3. UPDATE PELANGGARAN & HUKUMAN SECARA KUMULATIF PER PARTAI
+        // Penonton & Juri dapat melihat akumulasi karena 3x Peringatan = Diskualifikasi
+        ['merah', 'biru'].forEach(side => {
+            const prefix = side === 'merah' ? 'm' : 'b';
+            const acts = st[side].actions || [];
+            
+            document.getElementById(`trk-${prefix}-warn`).innerText = acts.filter(a => a.type === 'warning').length;
+            document.getElementById(`trk-${prefix}-cau`).innerText = acts.filter(a => a.type === 'caution').length;
+            document.getElementById(`trk-${prefix}-out`).innerText = acts.filter(a => a.type === 'ringout').length;
+            document.getElementById(`trk-${prefix}-8c`).innerText = acts.filter(a => a.type === '8count').length;
+        });
+    }
+</script>
+</body>
+</html>
